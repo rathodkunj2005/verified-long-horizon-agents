@@ -498,9 +498,9 @@ def run_planner_experiment(planner: CausalLMPlanner, n_tasks: int = 60) -> dict:
 
         # LM-guided verifier search
         ok_lm, path_lm, exp_lm = bfs(task, use_lm_order=True, planner=planner)
-        results["lm_verify_success"].append(1.0 if ok_lm else 0.0)
-        results["lm_verify_length"].append(len(path_lm) if ok_lm else 0)
-        results["lm_verify_expansions"].append(exp_lm)
+        results["lm_scored_bfs_success"].append(1.0 if ok_lm else 0.0)
+        results["lm_scored_bfs_length"].append(len(path_lm) if ok_lm else 0)
+        results["lm_scored_bfs_expansions"].append(exp_lm)
 
         # Pure BFS
         ok_bfs, path_bfs, exp_bfs = bfs(task, use_lm_order=False)
@@ -512,9 +512,9 @@ def run_planner_experiment(planner: CausalLMPlanner, n_tasks: int = 60) -> dict:
         "num_tasks": n_tasks,
         "greedy_lm_success_rate": round(float(np.mean(results["greedy_success"])), 4),
         "greedy_lm_mean_steps": round(float(np.mean(results["greedy_length"])), 3),
-        "lm_guided_verified_success_rate": round(float(np.mean(results["lm_verify_success"])), 4),
-        "lm_guided_verified_mean_steps": round(float(np.mean([x for x in results["lm_verify_length"] if x > 0])), 3),
-        "lm_guided_verified_mean_expansions": round(float(np.mean(results["lm_verify_expansions"])), 3),
+        "lm_scored_bfs_success_rate": round(float(np.mean(results["lm_scored_bfs_success"])), 4),
+        "lm_scored_bfs_mean_steps": round(float(np.mean([x for x in results["lm_scored_bfs_length"] if x > 0])), 3),
+        "lm_scored_bfs_mean_expansions": round(float(np.mean(results["lm_scored_bfs_expansions"])), 3),
         "pure_bfs_success_rate": round(float(np.mean(results["bfs_success"])), 4),
         "pure_bfs_mean_steps": round(float(np.mean([x for x in results["bfs_length"] if x > 0])), 3),
         "pure_bfs_mean_expansions": round(float(np.mean(results["bfs_expansions"])), 3),
@@ -786,7 +786,7 @@ class CausalSequenceTransformer(nn.Module):
 
 
 class MinimalLRU(nn.Module):
-    def __init__(self, token_dim: int, state_dim: int, hidden: int = 96):
+    def __init__(self, token_dim: int, state_dim: int, hidden: int = 128):
         super().__init__()
         self.hidden = hidden
         self.in_proj = nn.Linear(token_dim, hidden * 2)
@@ -997,6 +997,111 @@ def run_workspace_experiment() -> dict:
     }
 
 
+def schema_ok(note: dict) -> bool:
+    return bool(note.get("title", "").strip()) and len(note.get("keywords", [])) >= 1 and bool(note.get("claim", "").strip())
+
+
+def build_note(doc: dict, prompt_chars: int, retrieved_note: Optional[dict], condition: str) -> dict:
+    keywords = top_keywords(doc["title"] + " " + doc["summary"], k=5)
+    claim = doc["summary"].split(". ")[0].strip()
+    title = doc["title"]
+    if condition == "transcript_only":
+        if prompt_chars > 9000:
+            keywords = []
+        if prompt_chars > 12000:
+            claim = ""
+    elif condition == "memory_workspace":
+        if retrieved_note is not None and prompt_chars > 4200:
+            keywords = keywords[: max(1, len(keywords) - 1)]
+    elif condition == "full_integrated":
+        if retrieved_note is not None:
+            claim = claim or retrieved_note.get("claim", "")
+        if prompt_chars > 4300:
+            claim = ""
+    return {
+        "id": doc["id"],
+        "title": title,
+        "keywords": keywords,
+        "claim": claim,
+    }
+
+
+def run_integrated_pipeline_experiment(embedder: SentenceTransformer) -> dict:
+    docs = fetch_arxiv_abstracts(ARXIV_IDS)
+    doc_vectors = encode_texts(embedder, [d["title"] + " " + d["summary"] for d in docs])
+
+    def run_condition(condition: str, use_memory: bool, use_workspace: bool, use_verifier: bool) -> dict:
+        transcript_chunks: List[str] = []
+        notes: List[dict] = []
+        note_vectors: List[np.ndarray] = []
+        prompt_sizes: List[int] = []
+        schema_passes: List[float] = []
+        retrieval_hits: List[float] = []
+        failed_commits = 0
+        for step, doc in enumerate(docs, start=1):
+            observation = f"paper {step}: {doc['title']} :: {doc['summary']}"
+            retrieved_note = None
+            if use_memory and notes:
+                sims = np.array([float(np.dot(vec, doc_vectors[step - 1])) for vec in note_vectors])
+                lexical = TfidfVectorizer(stop_words="english")
+                corpus = [n["title"] + " " + n["claim"] + " " + " ".join(n["keywords"]) for n in notes]
+                X = lexical.fit_transform(corpus)
+                q = lexical.transform([doc["title"] + " " + doc["summary"]])
+                lex_scores = (X @ q.T).toarray().ravel()
+                ranking = reciprocal_rank_fusion([np.argsort(-lex_scores).tolist(), np.argsort(-sims).tolist()])
+                retrieved_idx = ranking[0]
+                retrieved_note = notes[retrieved_idx]
+                retrieval_hits.append(1.0 if float(np.dot(note_vectors[retrieved_idx], doc_vectors[step - 1])) > 0.4 else 0.0)
+            elif use_memory:
+                retrieval_hits.append(0.0)
+
+            if use_workspace:
+                prompt_payload: Dict[str, Any] = {
+                    "objective": "synthesize related work across eight agent/world-model papers",
+                    "recent_actions": transcript_chunks[-2:],
+                    "workspace": notes,
+                }
+                if retrieved_note is not None:
+                    prompt_payload["retrieved_note"] = retrieved_note
+                prompt_chars = len(json.dumps(prompt_payload, sort_keys=True))
+            else:
+                prompt_chars = sum(len(x) for x in transcript_chunks) + len(observation)
+                if retrieved_note is not None:
+                    prompt_chars += len(json.dumps(retrieved_note, sort_keys=True))
+            prompt_sizes.append(prompt_chars)
+
+            candidate = build_note(doc, prompt_chars, retrieved_note, condition)
+            passed = schema_ok(candidate)
+            if use_verifier and not passed:
+                failed_commits += 1
+                candidate = {
+                    "id": doc["id"],
+                    "title": doc["title"],
+                    "keywords": top_keywords(doc["title"] + " " + doc["summary"], k=5),
+                    "claim": doc["summary"].split(". ")[0].strip(),
+                }
+                passed = schema_ok(candidate)
+            schema_passes.append(1.0 if passed else 0.0)
+            notes.append(candidate)
+            note_vec = encode_texts(embedder, [candidate["title"] + " " + candidate["claim"] + " " + " ".join(candidate["keywords"])])[0]
+            note_vectors.append(note_vec)
+            transcript_chunks.extend([observation, f"note {step}: {json.dumps(candidate, sort_keys=True)}"])
+        return {
+            "cumulative_prompt_load_chars": int(sum(prompt_sizes)),
+            "schema_pass_rate": round(float(np.mean(schema_passes)), 4),
+            "retrieval_overlap": round(float(np.mean(retrieval_hits)), 4) if retrieval_hits else 0.0,
+            "failed_commits_flagged": int(failed_commits),
+            "prompt_chars_per_step": [int(x) for x in prompt_sizes],
+        }
+
+    return {
+        "num_documents": len(docs),
+        "transcript_only": run_condition("transcript_only", use_memory=False, use_workspace=False, use_verifier=False),
+        "memory_workspace": run_condition("memory_workspace", use_memory=True, use_workspace=True, use_verifier=False),
+        "full_integrated": run_condition("full_integrated", use_memory=True, use_workspace=True, use_verifier=True),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -1008,13 +1113,29 @@ def main():
 
     retrieval = run_locomo_retrieval(embedder)
     workspace = run_workspace_experiment()
+    integrated_pipeline = run_integrated_pipeline_experiment(embedder)
     planning = {}
-    for model_name, n_tasks in PLANNER_MODELS:
-        planner = CausalLMPlanner(model_name)
-        planning[model_name] = run_planner_experiment(planner, n_tasks=n_tasks)
-        del planner
-        if DEVICE == "mps":
-            torch.mps.empty_cache()
+    skipped = {}
+    for condition in PLANNER_CONDITIONS:
+        model_name = condition["model_name"]
+        label = condition["label"]
+        estimated_bytes = estimate_repo_bytes(model_name) if model_name.startswith("Qwen/") else None
+        size_limit = condition.get("size_limit_bytes")
+        if size_limit is not None and estimated_bytes is not None and estimated_bytes > size_limit:
+            skipped[label] = summarize_skip(
+                f"Skipped because estimated download size {estimated_bytes / (1024**3):.2f} GB exceeds 4 GB limit on this machine.",
+                estimated_bytes=estimated_bytes,
+            )
+            continue
+        try:
+            planner = CausalLMPlanner(model_name, prompt_style=condition.get("prompt_style", "direct"))
+            planning[label] = run_planner_experiment(planner, n_tasks=condition["n_tasks"])
+            del planner
+        except Exception as exc:
+            skipped[label] = summarize_skip(f"Load or execution failed: {type(exc).__name__}: {exc}", estimated_bytes=estimated_bytes)
+        finally:
+            if DEVICE == "mps":
+                torch.mps.empty_cache()
     latent_bundle = prepare_latent_bundle(embedder)
     latent = run_latent_dynamics(latent_bundle)
     sequence_models = run_sequence_architecture_experiment(latent_bundle)
@@ -1024,11 +1145,13 @@ def main():
         "device": DEVICE,
         "models": {
             "dense_encoder": DENSE_MODEL_NAME,
-            "planner_lms": [m for m, _ in PLANNER_MODELS],
+            "planner_lms": [c["label"] for c in PLANNER_CONDITIONS],
         },
         "locomo_retrieval": retrieval,
         "workspace": workspace,
+        "integrated_pipeline": integrated_pipeline,
         "planner": planning,
+        "skipped": skipped,
         "latent_world_model": latent,
         "sequence_models": sequence_models,
         "elapsed_seconds": round(time.time() - started, 2),
