@@ -1,0 +1,10 @@
+# Core ML
+torch>=2.1.0
+transformers>=4.40.0
+sentence-transformers>=2.7.0
+datasets>=2.19.0
+scikit-learn>=1.4.0
+numpy>=1.26.0
+
+# Utilities
+tqdm>=4.66.0

@@ -1,0 +1,38 @@
+{
+  "seed": 7,
+  "retrieval": {
+    "bm25": {
+      "hits_at_1": 0.367,
+      "hits_at_5": 0.75,
+      "mrr_at_5": 0.496,
+      "seconds": 0.0774
+    },
+    "char_ngram": {
+      "hits_at_1": 0.4,
+      "hits_at_5": 0.733,
+      "mrr_at_5": 0.511,
+      "seconds": 0.2108
+    },
+    "hybrid": {
+      "hits_at_1": 0.567,
+      "hits_at_5": 1.0,
+      "mrr_at_5": 0.745,
+      "seconds": 0.4694
+    }
+  },
+  "context_bloat": {
+    "steps": 150,
+    "final_full_prompt_chars": 30384,
+    "final_bounded_prompt_chars": 981,
+    "cumulative_full_chars_processed": 2287674,
+    "cumulative_bounded_chars_processed": 144410,
+    "relative_reduction": 0.937
+  },
+  "planning": {
+    "trials": 120,
+    "greedy_success_rate": 0.542,
+    "verified_search_success_rate": 0.892,
+    "greedy_mean_path_len": 15.32,
+    "verified_mean_path_len": 14.02
+  }
+}

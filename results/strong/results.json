@@ -1,0 +1,173 @@
+{
+  "seed": 7,
+  "device": "mps",
+  "models": {
+    "dense_encoder": "sentence-transformers/all-MiniLM-L6-v2",
+    "planner_lms": [
+      "distilgpt2",
+      "Qwen/Qwen2.5-0.5B-Instruct"
+    ]
+  },
+  "locomo_retrieval": {
+    "tfidf": {
+      "hits@1": 0.2352,
+      "hits@5": 0.4385,
+      "hits@10": 0.525,
+      "mrr": 0.3337,
+      "ndcg@10": 0.3513,
+      "num_queries": 1977,
+      "num_memories": 5882
+    },
+    "dense": {
+      "hits@1": 0.1507,
+      "hits@5": 0.3409,
+      "hits@10": 0.4294,
+      "mrr": 0.2456,
+      "ndcg@10": 0.2586,
+      "num_queries": 1977,
+      "num_memories": 5882
+    },
+    "hybrid": {
+      "hits@1": 0.219,
+      "hits@5": 0.4891,
+      "hits@10": 0.5802,
+      "mrr": 0.3426,
+      "ndcg@10": 0.3687,
+      "num_queries": 1977,
+      "num_memories": 5882
+    },
+    "dense_encoding_seconds": 1.889
+  },
+  "workspace": {
+    "num_documents": 8,
+    "steps": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "full_prompt_chars_per_step": [
+      2113,
+      3948,
+      5606,
+      7162,
+      9059,
+      10913,
+      12411,
+      14346
+    ],
+    "bounded_prompt_chars_per_step": [
+      2567,
+      2586,
+      2746,
+      3050,
+      3771,
+      4048,
+      4023,
+      4770
+    ],
+    "cumulative_full_prompt_chars_per_step": [
+      2113,
+      6061,
+      11667,
+      18829,
+      27888,
+      38801,
+      51212,
+      65558
+    ],
+    "cumulative_bounded_prompt_chars_per_step": [
+      2567,
+      5153,
+      7899,
+      10949,
+      14720,
+      18768,
+      22791,
+      27561
+    ],
+    "final_full_prompt_chars": 14346,
+    "final_bounded_prompt_chars": 4770,
+    "cumulative_full_chars_processed": 65558,
+    "cumulative_bounded_chars_processed": 27561,
+    "relative_reduction": 0.5796,
+    "title_coverage": 1.0,
+    "keyword_coverage": 1.0
+  },
+  "planner": {
+    "distilgpt2": {
+      "num_tasks": 20,
+      "greedy_lm_success_rate": 0.0,
+      "greedy_lm_mean_steps": 3.9,
+      "lm_guided_verified_success_rate": 1.0,
+      "lm_guided_verified_mean_steps": 8.2,
+      "lm_guided_verified_mean_expansions": 29.9,
+      "pure_bfs_success_rate": 1.0,
+      "pure_bfs_mean_steps": 8.2,
+      "pure_bfs_mean_expansions": 29.7
+    },
+    "Qwen/Qwen2.5-0.5B-Instruct": {
+      "num_tasks": 10,
+      "greedy_lm_success_rate": 0.0,
+      "greedy_lm_mean_steps": 4.5,
+      "lm_guided_verified_success_rate": 1.0,
+      "lm_guided_verified_mean_steps": 8.2,
+      "lm_guided_verified_mean_expansions": 34.5,
+      "pure_bfs_success_rate": 1.0,
+      "pure_bfs_mean_steps": 8.2,
+      "pure_bfs_mean_expansions": 34.3
+    }
+  },
+  "latent_world_model": {
+    "num_transitions": 9471,
+    "state_bank_size": 1774,
+    "one_step_cosine": 0.9989,
+    "one_step_top1_decode_global": 0.0056,
+    "one_step_top5_decode_global": 0.0225,
+    "one_step_top1_decode_local": 0.1042,
+    "one_step_top5_decode_local": 0.3983,
+    "h1_cosine": 0.9991,
+    "h3_cosine": 0.9991,
+    "h5_cosine": 0.999
+  },
+  "sequence_models": {
+    "device": "cpu",
+    "num_episodes": 480,
+    "num_transitions": 9471,
+    "causal_transformer": {
+      "one_step_cosine": 0.9985,
+      "one_step_top1_decode_local": 0.0603,
+      "one_step_top5_decode_local": 0.2929,
+      "h1_cosine": 0.9988,
+      "h3_cosine": 0.9988,
+      "h5_cosine": 0.9987,
+      "parameter_count": 368640,
+      "training_seconds": 1.418
+    },
+    "linear_recurrent": {
+      "one_step_cosine": 0.9982,
+      "one_step_top1_decode_local": 0.0631,
+      "one_step_top5_decode_local": 0.3097,
+      "h1_cosine": 0.9958,
+      "h3_cosine": 0.9986,
+      "h5_cosine": 0.9986,
+      "parameter_count": 149376,
+      "training_seconds": 0.836
+    },
+    "mlp_control": {
+      "one_step_cosine": 0.9986,
+      "one_step_top1_decode_local": 0.0603,
+      "one_step_top5_decode_local": 0.2964,
+      "h1_cosine": 0.9989,
+      "h3_cosine": 0.9989,
+      "h5_cosine": 0.9988,
+      "parameter_count": 659840,
+      "training_seconds": 0.461
+    }
+  },
+  "elapsed_seconds": 206.01
+}
