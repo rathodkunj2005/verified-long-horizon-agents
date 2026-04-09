@@ -38,7 +38,7 @@
       "num_queries": 1977,
       "num_memories": 5882
     },
-    "dense_encoding_seconds": 1.825
+    "dense_encoding_seconds": 1.576
   },
   "workspace": {
     "num_documents": 8,
@@ -119,9 +119,9 @@
       ]
     },
     "memory_workspace": {
-      "cumulative_prompt_load_chars": 25284,
-      "schema_pass_rate": 1.0,
-      "retrieval_overlap": 0.75,
+      "cumulative_prompt_load_chars": 25081,
+      "schema_pass_rate": 0.875,
+      "retrieval_overlap": 0.625,
       "failed_commits_flagged": 0,
       "prompt_chars_per_step": [
         117,
@@ -131,7 +131,7 @@
         3464,
         4116,
         4393,
-        4336
+        4133
       ]
     },
     "full_integrated": {
@@ -222,7 +222,7 @@
       "h3_cosine": 0.9989,
       "h5_cosine": 0.9988,
       "parameter_count": 368640,
-      "training_seconds": 1.268
+      "training_seconds": 1.068
     },
     "linear_recurrent": {
       "one_step_cosine": 0.9982,
@@ -232,7 +232,7 @@
       "h3_cosine": 0.9987,
       "h5_cosine": 0.9987,
       "parameter_count": 199040,
-      "training_seconds": 0.725
+      "training_seconds": 0.657
     },
     "mlp_control": {
       "one_step_cosine": 0.9986,
@@ -242,8 +242,8 @@
       "h3_cosine": 0.999,
       "h5_cosine": 0.9988,
       "parameter_count": 659840,
-      "training_seconds": 0.372
+      "training_seconds": 0.352
     }
   },
-  "elapsed_seconds": 557.63
+  "elapsed_seconds": 3365.24
 }

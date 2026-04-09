@@ -8,3 +8,6 @@ __pycache__/
 *.pyc
 .DS_Store
 results/strong/latest_run*.txt
+results/strong/locomo10.json
+results/retrieval_details.csv
+submission/

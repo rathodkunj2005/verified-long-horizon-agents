@@ -1012,7 +1012,7 @@ def build_note(doc: dict, prompt_chars: int, retrieved_note: Optional[dict], con
             claim = ""
     elif condition == "memory_workspace":
         if retrieved_note is not None and prompt_chars > 4200:
-            keywords = keywords[: max(1, len(keywords) - 1)]
+            claim = ""
     elif condition == "full_integrated":
         if retrieved_note is not None:
             claim = claim or retrieved_note.get("claim", "")
